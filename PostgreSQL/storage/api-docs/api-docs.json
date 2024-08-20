@@ -13,26 +13,67 @@
         "version": "1.0.0"
     },
     "paths": {
-        "/list": {
+        "/api/Products": {
             "get": {
                 "tags": [
                     "Products"
                 ],
-                "summary": "Get the list of all products",
-                "operationId": "65f5998ae73e914a20c52ee44ee594e8",
+                "summary": "Lấy danh sách sản phẩm",
+                "operationId": "f5691985650a2c8eae7c576aa3dd482d",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Số trang",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "take",
+                        "in": "query",
+                        "description": "Số sản phẩm trên mỗi trang",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
-                        "description": "A list of products",
+                        "description": "Danh sách sản phẩm",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/Product"
-                                    }
+                                    "properties": {
+                                        "current_page": {
+                                            "type": "integer"
+                                        },
+                                        "total_pages": {
+                                            "type": "integer"
+                                        },
+                                        "total_items": {
+                                            "type": "integer"
+                                        },
+                                        "next_page_url": {
+                                            "type": "string",
+                                            "format": "uri"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Product"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
                                 }
                             }
                         }
+                    },
+                    "404": {
+                        "description": "Không tìm thấy dữ liệu"
                     }
                 }
             }
@@ -216,6 +257,26 @@
     },
     "components": {
         "schemas": {
+            "PaginatedProductResponse": {
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Product"
+                        }
+                    },
+                    "current_page": {
+                        "type": "integer"
+                    },
+                    "total_pages": {
+                        "type": "integer"
+                    },
+                    "total_items": {
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
             "Product": {
                 "required": [
                     "name",
@@ -225,7 +286,7 @@
                 "properties": {
                     "name": {
                         "type": "string",
-                        "example": "Product Name"
+                        "example": " Name"
                     },
                     "price": {
                         "type": "number",

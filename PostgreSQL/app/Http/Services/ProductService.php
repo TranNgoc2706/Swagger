@@ -27,8 +27,7 @@ class ProductService{
     }
     public function get()
     {
-        return Product::all();
-
+        return Product::all()->paginate(5);
     }
     public function update($request, $product)
     {

@@ -3,33 +3,42 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\CreateFromRequest;
-use Illuminate\Http\Request;    
+use App\Http\Resources\ProductResouce;
+use Illuminate\Http\Request;
 use App\Http\Services\ProductService;
 use App\Models\Product;
+use Illuminate\Http\Response;
 
 /**
- * @OA\Info(
- *     title="Laravel API Documentation",
- *     version="1.0.0",
- *     description="This is the API documentation for my Laravel project.",
- *     @OA\Contact(
- *         email="contact@example.com"
- *     ),
- *     @OA\License(
- *         name="Apache 2.0",
- *         url="http://www.apache.org/licenses/LICENSE-2.0.html"
- *     )
+ * @OA\Schema(
+ *     schema="Product",
+ *     type="object",
+ *     required={"name", "price", "thumb"},
+ *     @OA\Property(property="name", type="string", example="Product Name"),
+ *     @OA\Property(property="price", type="number", format="float", example=29.99),
+ *     @OA\Property(property="thumb", type="string", example="/images/product-thumb.jpg")
  * )
  */
+/**
+ * @OA\Schema(
+ *     schema="PaginatedProductResponse",
+ *     type="object",
+ *     @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/Product")),
+ *     @OA\Property(property="current_page", type="integer"),
+ *     @OA\Property(property="total_pages", type="integer"),
+ *     @OA\Property(property="total_items", type="integer")
+ * )
+ */
+
 class ProductController extends Controller
 {
     protected $ProductService;
-    public function __construct(ProductService $ProductService )
+    public function __construct(ProductService $ProductService)
     {
         $this->ProductService = $ProductService;
     }
 
-     /**
+    /**
      * @OA\Get(
      *     path="/list",
      *     tags={"Products"},
@@ -44,17 +53,70 @@ class ProductController extends Controller
      *     )
      * )
      */
-    public function index()
+    /**
+     * @OA\Get(
+     *     path="/api/Products",
+     *     summary="Lấy danh sách sản phẩm",
+     *     tags={"Products"},
+     *     @OA\Parameter(
+     *         name="page",
+     *         in="query",
+     *         description="Số trang",
+     *         required=false,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Parameter(
+     *         name="take",
+     *         in="query",
+     *         description="Số sản phẩm trên mỗi trang",
+     *         required=false,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Danh sách sản phẩm",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="current_page", type="integer"),
+     *             @OA\Property(property="total_pages", type="integer"),
+     *             @OA\Property(property="total_items", type="integer"),
+     *             @OA\Property(property="next_page_url", type="string", format="uri"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(ref="#/components/schemas/Product")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=404, description="Không tìm thấy dữ liệu"),
+     * )
+     */
+    public function index(Request $request)
     {
-         $products =  $this->ProductService->get();
-        return view('list',[
-            'title'=>'danh sach san pham',
-            'products'=>$products,
+        $page = $request->query('page', 1);
+        $take = $request->query('take', 10);
+
+        $products = Product::paginate($take);
+
+        $paginationData = [
+        'current_page' => $products->currentPage(),
+        'total_pages' => $products->lastPage(),
+        'total_items' => $products->total(),
+        'next_page_url' => $products->nextPageUrl(),
+        'data' => $products->items(),
+    ];
+
+    if ($request->wantsJson()) {
+        return response()->json($paginationData);
+    }
+
+        return view('list', [
+            'title' => 'Danh sách sản phẩm',
+            'products' => $products,
         ]);
     }
 
 
-      /**
+    /**
      * @OA\Get(
      *     path="/add",
      *     tags={"Products"},
@@ -65,17 +127,18 @@ class ProductController extends Controller
      *     )
      * )
      */
-    public function create()
+    public function create(Request $request)
     {
-        
+
         $products =  $this->ProductService->get();
         return view('add', [
             'title' => 'them san pham moi ',
-            'products'=> $products,
+            'products' => $products,
         ]);
     }
 
-     /**
+
+    /**
      * @OA\Post(
      *     path="/add",
      *     tags={"Products"},
@@ -100,12 +163,12 @@ class ProductController extends Controller
      *     )
      * )
      */
-    public function store(CreateFromRequest $request )
+    public function store(CreateFromRequest $request)
     {
         $this->ProductService->insert($request);
         return redirect()->back();
     }
-     /**
+    /**
      * @OA\Get(
      *     path="/edit/{id}",
      *     tags={"Products"},
@@ -127,15 +190,15 @@ class ProductController extends Controller
      *     )
      * )
      */
-    public function show(Product $product )
+    public function show(Product $product)
     {
-        return view('edit',[
-            'title'=>'chinh sua sản phẩm: '.$product->name,
-            'product'=>$product,
+        return view('edit', [
+            'title' => 'chinh sua sản phẩm: ' . $product->name,
+            'product' => $product,
         ]);
     }
 
-     /**
+    /**
      * @OA\Put(
      *     path="/edit/{id}",
      *     tags={"Products"},
@@ -173,7 +236,7 @@ class ProductController extends Controller
         return redirect()->route('edit', ['id' => $product->id])->with('success', 'Cập nhật thành công');
     }
 
-     /**
+    /**
      * @OA\Delete(
      *     path="/destroy",
      *     tags={"Products"},
@@ -198,13 +261,14 @@ class ProductController extends Controller
     public function destroy(Request $request)
     {
         $result = $this->ProductService->delete($request);
-        if($result){
+        if ($result) {
             return response()->json([
-                'error'=>false,
+                'error' => false,
                 'message' => 'xoa thanh cong'
             ]);
         }
         return response()->json([
-            'error'=>true]);
+            'error' => true
+        ]);
     }
 }
